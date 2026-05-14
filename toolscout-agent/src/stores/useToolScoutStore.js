@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 export const useToolScoutStore = create((set, get) => ({
   companyName: '',
@@ -34,10 +34,7 @@ export const useToolScoutStore = create((set, get) => ({
       const response = await fetch(`${API_BASE_URL}/api/runs`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Failed to load runs');
-      set({
-        runHistory: payload.runs || [],
-        historyState: 'loaded'
-      });
+      set({ runHistory: payload.data || [], historyState: 'loaded' });
     } catch (_error) {
       set({ historyState: 'failed' });
     }
@@ -48,7 +45,7 @@ export const useToolScoutStore = create((set, get) => ({
       const response = await fetch(`${API_BASE_URL}/api/runs/${runId}`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Failed to load run detail');
-      set({ selectedRunDetail: payload, latestRun: payload, runState: 'completed', error: null });
+      set({ selectedRunDetail: payload.data || null, latestRun: payload.data || null, runState: 'completed', error: null });
     } catch (error) {
       set({ error: error.message });
     }
@@ -61,13 +58,13 @@ export const useToolScoutStore = create((set, get) => ({
       const response = await fetch(`${API_BASE_URL}/api/runs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyName, budget: Number(budget) })
+        body: JSON.stringify({ objective: companyName, budget: Number(budget) })
       });
       const payload = await response.json();
       if (!response.ok) {
         throw new Error(payload.message || payload.error || 'Run failed');
       }
-      set({ runState: 'completed', latestRun: payload, selectedRunDetail: payload });
+      set({ runState: 'completed', latestRun: payload.data || null, selectedRunDetail: payload.data || null });
       await loadDashboardData();
     } catch (error) {
       set({ runState: 'failed', error: error.message });

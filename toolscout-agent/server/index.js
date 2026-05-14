@@ -39,14 +39,14 @@ app.get('/api/runs', (req, res) => {
   res.json({ ok: true, data: listRuns(limit) });
 });
 
+app.get('/api/runs/stats', (_req, res) => {
+  res.json({ ok: true, data: getRunStats() });
+});
+
 app.get('/api/runs/:id', (req, res) => {
   const run = getRunById(req.params.id);
   if (!run) return res.status(404).json({ ok: false, error: 'run not found' });
   return res.json({ ok: true, data: run });
-});
-
-app.get('/api/runs/stats', (_req, res) => {
-  res.json({ ok: true, data: getRunStats() });
 });
 
 // Backward compatibility routes

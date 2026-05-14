@@ -31,6 +31,7 @@ export default function App() {
   }, [checkHealth, loadDashboardData]);
 
   const run = selectedRunDetail || latestRun;
+  const report = run?.report_json || run;
 
   return (
     <main className="min-h-screen bg-stone-50 text-black">
@@ -67,25 +68,25 @@ export default function App() {
               {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             </div>
 
-            {run && (
+            {report && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                 <Card className="bg-stone-50">
                   <h3 className="font-medium">Run Result</h3>
-                  <p className="mt-1 text-sm">Run ID: {run.runId}</p>
-                  <p className="text-sm">Company: {run.companyName} · Budget: ${run.budget}</p>
-                  <p className="text-sm">Score: {run.score} · Status: {run.status}</p>
-                  <p className="mt-1 text-sm">{run.summary}</p>
+                  <p className="mt-1 text-sm">Run ID: {run?.id || report.runId}</p>
+                  <p className="text-sm">Objective: {report.objective} · Budget: ${report.budget}</p>
+                  <p className="text-sm">Status: {report.status} {report.selected?.weightedScore ? `· Top Score: ${report.selected.weightedScore}` : ''}</p>
+                  <p className="mt-1 text-sm">{report.selected ? `Selected ${report.selected.serviceId} from ${report.selected.provider}.` : 'No affordable match selected.'}</p>
                 </Card>
                 <Card className="bg-stone-50">
                   <h3 className="font-medium">Discovered Tools</h3>
                   <ul className="mt-1 text-sm list-disc pl-5">
-                    {(run.discoveredTools || []).map((tool) => <li key={tool.id}>{tool.name} ({tool.id}) · Fit {tool.fit}</li>)}
+                    {(report.discovered || []).map((tool) => <li key={tool.serviceId}>{tool.provider} / {tool.serviceId} · ${tool.estimatedCost}</li>)}
                   </ul>
                 </Card>
                 <Card className="bg-stone-50">
                   <h3 className="font-medium">Executed Actions</h3>
                   <ul className="mt-1 text-sm list-disc pl-5">
-                    {(run.executedActions || []).map((action) => <li key={`${action.toolId}-${action.action}`}>{action.action} · {action.outcome} · {action.latencyMs}ms</li>)}
+                    {(report.evaluations || []).map((action) => <li key={action.serviceId}>{action.provider} · score {action.score} · est ${action.estimatedCost}</li>)}
                   </ul>
                 </Card>
               </motion.div>
@@ -97,8 +98,8 @@ export default function App() {
               <ul className="mt-2 space-y-1 text-sm">
                 {runHistory.map((item) => (
                   <li key={item.runId}>
-                    <button type="button" className="underline decoration-dotted" onClick={() => loadRunDetail(item.runId)}>
-                      #{item.runId.slice(0, 8)} · {item.companyName} · ${item.budget} · score {item.score}
+                    <button type="button" className="underline decoration-dotted" onClick={() => loadRunDetail(item.id)}>
+                      #{String(item.id).padStart(4, '0')} · {item.objective} · ${item.budget} · {item.status}
                     </button>
                   </li>
                 ))}
