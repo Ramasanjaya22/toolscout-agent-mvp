@@ -1,0 +1,8 @@
+{
+  "name": "toolscout-agent-mvp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "server": "bun run src/server.ts"
+  }
+}
