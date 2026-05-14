@@ -1,37 +1,41 @@
 import { create } from 'zustand';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787';
 
 export const useToolScoutStore = create((set, get) => ({
-  objective: '',
-  budget: 150,
+  companyName: '',
+  budget: 300,
   runState: 'idle',
   error: null,
-  report: null,
+  health: null,
+  latestRun: null,
   selectedRunDetail: null,
   runHistory: [],
   historyState: 'idle',
-  stats: null,
-  modelConfig: null,
-  modelTest: null,
 
-  setObjective: (objective) => set({ objective }),
+  setCompanyName: (companyName) => set({ companyName }),
   setBudget: (budget) => set({ budget }),
-  resetRun: () => set({ runState: 'idle', report: null, error: null, selectedRunDetail: null }),
+  resetRun: () => set({ runState: 'idle', latestRun: null, error: null, selectedRunDetail: null }),
+
+  checkHealth: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Health check failed');
+      set({ health: payload });
+    } catch (error) {
+      set({ health: { ok: false, error: error.message } });
+    }
+  },
 
   loadDashboardData: async () => {
     set({ historyState: 'loading' });
     try {
-      const [runsRes, statsRes, modelRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/agent/runs?limit=8`),
-        fetch(`${API_BASE_URL}/api/agent/stats`),
-        fetch(`${API_BASE_URL}/api/agent/model/config`)
-      ]);
-      const [runsPayload, statsPayload, modelPayload] = await Promise.all([runsRes.json(), statsRes.json(), modelRes.json()]);
+      const response = await fetch(`${API_BASE_URL}/api/runs`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Failed to load runs');
       set({
-        runHistory: runsPayload.data || [],
-        stats: statsPayload.data || null,
-        modelConfig: modelPayload.data || null,
+        runHistory: payload.runs || [],
         historyState: 'loaded'
       });
     } catch (_error) {
@@ -41,37 +45,29 @@ export const useToolScoutStore = create((set, get) => ({
 
   loadRunDetail: async (runId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/agent/runs/${runId}`);
+      const response = await fetch(`${API_BASE_URL}/api/runs/${runId}`);
       const payload = await response.json();
-      if (!response.ok || !payload.ok) throw new Error(payload.error || 'Failed to load run detail');
-      set({ selectedRunDetail: payload.data, report: payload.data.report_json, runState: 'completed' });
+      if (!response.ok) throw new Error(payload.error || 'Failed to load run detail');
+      set({ selectedRunDetail: payload, latestRun: payload, runState: 'completed', error: null });
     } catch (error) {
       set({ error: error.message });
     }
   },
 
-  testModelConnection: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/agent/model/test`, { method: 'POST' });
-      const payload = await response.json();
-      set({ modelTest: payload.data || null });
-    } catch (error) {
-      set({ modelTest: { connected: false, error: error.message } });
-    }
-  },
-
   runAgent: async () => {
-    const { objective, budget, loadDashboardData } = get();
-    set({ runState: 'running', error: null, report: null, selectedRunDetail: null });
+    const { companyName, budget, loadDashboardData } = get();
+    set({ runState: 'running', error: null, latestRun: null, selectedRunDetail: null });
     try {
-      const response = await fetch(`${API_BASE_URL}/api/agent/run`, {
+      const response = await fetch(`${API_BASE_URL}/api/runs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ objective, budget: Number(budget) })
+        body: JSON.stringify({ companyName, budget: Number(budget) })
       });
       const payload = await response.json();
-      if (!response.ok || !payload.ok) throw new Error(payload.error || 'Run failed');
-      set({ runState: 'completed', report: payload.data });
+      if (!response.ok) {
+        throw new Error(payload.message || payload.error || 'Run failed');
+      }
+      set({ runState: 'completed', latestRun: payload, selectedRunDetail: payload });
       await loadDashboardData();
     } catch (error) {
       set({ runState: 'failed', error: error.message });
